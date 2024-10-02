@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Snake Game with Touch Controls</title>
+<style>
+  body {
+    margin: 0;
+    background-color: #333;
+    touch-action: none; /* Prevent default touch actions */
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    margin: 0 auto;
+    background-color: #000;
+    touch-action: none; /* Prevent default touch actions */
+  }
+  #controls {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .button {
+    width: 60px;
+    height: 60px;
+    margin: 5px;
+    background-color: #666;
+    color: white;
+    font-size: 24px;
+    text-align: center;
+    line-height: 60px;
+    border-radius: 10px;
+    user-select: none;
+    touch-action: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Adjust canvas size to fit the screen
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight - 100; // Leave space for controls
+
+let speed = 10;
+let tileCountX = 20;
+let tileCountY = 20;
+let tileSizeX = canvas.width / tileCountX;
+let tileSizeY = canvas.height / tileCountY;
+
+let headX = 10;
+let headY = 10;
+
+const snakeParts = [];
+let tailLength = 2;
+
+let donutX = Math.floor(Math.random() * tileCountX);
+let donutY = Math.floor(Math.random() * tileCountY);
+
+let xVelocity = 0;
+let yVelocity = 0;
+
+let score = 0;
+
+let showVictoryMessage = false;
+
+// Touch Controls
+let touchStartX = 0;
+let touchStartY = 0;
+
+const colors = ['#FF0000', '#FF7F00', '#FFFF00', '#008000', '#0000FF', '#8B00FF'];
+
+// Create a pattern that looks like a wire cable
+const patternCanvas = document.createElement('canvas');
+patternCanvas.width = 20;
+patternCanvas.height = 20;
+const pctx = patternCanvas.getContext('2d');
+
+// Draw the wire cable pattern
+pctx.fillStyle = '#888';
+pctx.fillRect(0, 0, 20, 20);
+
+pctx.strokeStyle = '#bbb';
+pctx.lineWidth = 2;
+
+pctx.beginPath();
+pctx.moveTo(0, 20);
+pctx.lineTo(20, 0);
+pctx.stroke();
+
+pctx.beginPath();
+pctx.moveTo(5, 20);
+pctx.lineTo(20, 5);
+pctx.stroke();
+
+pctx.beginPath();
+pctx.moveTo(0, 15);
+pctx.lineTo(15, 0);
+pctx.stroke();
+
+const snakePattern = ctx.createPattern(patternCanvas, 'repeat');
+
+// Load donut image
+const donutImage = new Image();
+donutImage.src = 'https://i.imgur.com/4QOFPzH.png'; // Replace with a valid image URL
+
+function drawGame() {
+  changeSnakePosition();
+  clearScreen();
+  checkDonutCollision();
+  drawDonut();
+  drawSnake();
+  drawScore();
+
+  if (showVictoryMessage) {
+    drawVictoryMessage();
+  }
+
+  setTimeout(drawGame, 1000 / speed);
+}
+
+function clearScreen() {
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function drawSnake() {
+  ctx.fillStyle = snakePattern;
+  for (let part of snakeParts) {
+    ctx.fillRect(part.x * tileSizeX, part.y * tileSizeY, tileSizeX, tileSizeY);
+  }
+
+  // Add the head to the snake parts array
+  snakeParts.push({ x: headX, y: headY });
+  while (snakeParts.length > tailLength) {
+    // Remove the oldest part of the snake
+    snakeParts.shift();
+  }
+
+  ctx.fillRect(headX * tileSizeX, headY * tileSizeY, tileSizeX, tileSizeY);
+}
+
+function changeSnakePosition() {
+  headX += xVelocity;
+  headY += yVelocity;
+
+  // Wrap around the canvas edges
+  if (headX < 0) {
+    headX = tileCountX - 1;
+  } else if (headX >= tileCountX) {
+    headX = 0;
+  }
+
+  if (headY < 0) {
+    headY = tileCountY - 1;
+  } else if (headY >= tileCountY) {
+    headY = 0;
+  }
+}
+
+function drawDonut() {
+  ctx.drawImage(donutImage, donutX * tileSizeX, donutY * tileSizeY, tileSizeX, tileSizeY);
+}
+
+function checkDonutCollision() {
+  if (donutX === headX && donutY === headY) {
+    donutX = Math.floor(Math.random() * tileCountX);
+    donutY = Math.floor(Math.random() * tileCountY);
+    tailLength++;
+    score += 10;
+
+    // Check if score reaches 100 points
+    if (score >= 100 && !showVictoryMessage) {
+      showVictoryMessage = true;
+    }
+  }
+}
+
+function drawScore() {
+  ctx.fillStyle = 'white';
+  ctx.font = '18px Verdana';
+  ctx.fillText('Score: ' + score, 10, 30);
+}
+
+function drawVictoryMessage() {
+  // Draw the rainbow flag over the game screen
+  const stripeHeight = canvas.height / colors.length;
+
+  for (let i = 0; i < colors.length; i++) {
+    ctx.fillStyle = colors[i];
+    ctx.fillRect(0, i * stripeHeight, canvas.width, stripeHeight);
+  }
+
+  // Draw the winning title
+  ctx.fillStyle = 'white';
+  ctx.font = '40px Verdana';
+  ctx.textAlign = 'center';
+  ctx.fillText('Congratulations you are gay', canvas.width / 2, canvas.height / 2);
+}
+
+// Touch controls
+canvas.addEventListener('touchstart', handleTouchStart, false);
+canvas.addEventListener('touchmove', handleTouchMove, false);
+
+function handleTouchStart(evt) {
+  const firstTouch = evt.touches[0];
+  touchStartX = firstTouch.clientX;
+  touchStartY = firstTouch.clientY;
+}
+
+function handleTouchMove(evt) {
+  if (!touchStartX || !touchStartY) {
+    return;
+  }
+
+  let touchEndX = evt.touches[0].clientX;
+  let touchEndY = evt.touches[0].clientY;
+
+  const diffX = touchStartX - touchEndX;
+  const diffY = touchStartY - touchEndY;
+
+  if (Math.abs(diffX) > Math.abs(diffY)) {
+    // Horizontal swipe
+    if (diffX > 0 && xVelocity !== 1) {
+      // Left swipe
+      xVelocity = -1;
+      yVelocity = 0;
+    } else if (diffX < 0 && xVelocity !== -1) {
+      // Right swipe
+      xVelocity = 1;
+      yVelocity = 0;
+    }
+  } else {
+    // Vertical swipe
+    if (diffY > 0 && yVelocity !== 1) {
+      // Up swipe
+      xVelocity = 0;
+      yVelocity = -1;
+    } else if (diffY < 0 && yVelocity !== -1) {
+      // Down swipe
+      xVelocity = 0;
+      yVelocity = 1;
+    }
+  }
+
+  // Reset touch positions
+  touchStartX = null;
+  touchStartY = null;
+}
+
+document.addEventListener('keydown', keyDown);
+
+function keyDown(event) {
+  // Use event.key instead of event.keyCode
+  if (event.key === 'ArrowUp' && yVelocity !== 1) { // Up
+    yVelocity = -1;
+    xVelocity = 0;
+  }
+  if (event.key === 'ArrowDown' && yVelocity !== -1) { // Down
+    yVelocity = 1;
+    xVelocity = 0;
+  }
+  if (event.key === 'ArrowLeft' && xVelocity !== 1) { // Left
+    yVelocity = 0;
+    xVelocity = -1;
+  }
+  if (event.key === 'ArrowRight' && xVelocity !== -1) { // Right
+    yVelocity = 0;
+    xVelocity = 1;
+  }
+}
+
+drawGame();
+</script>
+</body>
+</html>
